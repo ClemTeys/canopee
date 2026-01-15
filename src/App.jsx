@@ -22,41 +22,71 @@ const App = () => {
   const [userId] = useState(getOrCreateUserId());
   const [selectedTags, setSelectedTags] = useState([]);
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [sortBy, setSortBy] = useState('date'); // 'date', 'importance', 'controversy'
+  const [sortBy, setSortBy] = useState('date');
 
+  // Charger les données depuis localStorage au démarrage
   useEffect(() => {
-    const mockQuestions = [
-      { 
-        id: 1, 
-        text: "Les pâtes carbonara doivent contenir de la crème", 
-        tags: ['cuisine', 'italien', 'débat'],
-        created_by: 'demo1',
-        created_at: new Date() 
-      },
-      { 
-        id: 2, 
-        text: "Il faut mettre l'ananas sur la pizza", 
-        tags: ['cuisine', 'pizza', 'controverse'],
-        created_by: 'demo2',
-        created_at: new Date() 
-      },
-      { 
-        id: 3, 
-        text: "Le télétravail améliore la productivité", 
-        tags: ['travail', 'productivité'],
-        created_by: userId,
-        created_at: new Date() 
-      }
-    ];
-    setQuestions(mockQuestions);
+    const savedQuestions = localStorage.getItem('poll_questions');
+    const savedResponses = localStorage.getItem('poll_responses');
+    
+    if (savedQuestions) {
+      setQuestions(JSON.parse(savedQuestions));
+    } else {
+      // Questions par défaut seulement si rien en localStorage
+      const mockQuestions = [
+        { 
+          id: 1, 
+          text: "Les pâtes carbonara doivent contenir de la crème", 
+          tags: ['cuisine', 'italien', 'débat'],
+          created_by: 'demo1',
+          created_at: new Date().toISOString()
+        },
+        { 
+          id: 2, 
+          text: "Il faut mettre l'ananas sur la pizza", 
+          tags: ['cuisine', 'pizza', 'controverse'],
+          created_by: 'demo2',
+          created_at: new Date().toISOString()
+        },
+        { 
+          id: 3, 
+          text: "Le télétravail améliore la productivité", 
+          tags: ['travail', 'productivité'],
+          created_by: userId,
+          created_at: new Date().toISOString()
+        }
+      ];
+      setQuestions(mockQuestions);
+      localStorage.setItem('poll_questions', JSON.stringify(mockQuestions));
+    }
 
-    const mockResponses = [
-      { id: 1, question_id: 1, user_id: 'demo1', agreement: 30, importance: 70 },
-      { id: 2, question_id: 1, user_id: 'demo2', agreement: 80, importance: 40 },
-      { id: 3, question_id: 2, user_id: 'demo1', agreement: 20, importance: 20 },
-    ];
-    setResponses(mockResponses);
-  }, []);
+    if (savedResponses) {
+      setResponses(JSON.parse(savedResponses));
+    } else {
+      // Réponses mock par défaut
+      const mockResponses = [
+        { id: 1, question_id: 1, user_id: 'demo1', agreement: 30, importance: 70 },
+        { id: 2, question_id: 1, user_id: 'demo2', agreement: 80, importance: 40 },
+        { id: 3, question_id: 2, user_id: 'demo1', agreement: 20, importance: 20 },
+      ];
+      setResponses(mockResponses);
+      localStorage.setItem('poll_responses', JSON.stringify(mockResponses));
+    }
+  }, [userId]);
+
+  // Sauvegarder les questions dans localStorage à chaque modification
+  useEffect(() => {
+    if (questions.length > 0) {
+      localStorage.setItem('poll_questions', JSON.stringify(questions));
+    }
+  }, [questions]);
+
+  // Sauvegarder les réponses dans localStorage à chaque modification
+  useEffect(() => {
+    if (responses.length > 0) {
+      localStorage.setItem('poll_responses', JSON.stringify(responses));
+    }
+  }, [responses]);
 
   // Récupérer tous les tags uniques
   const getAllTags = () => {
@@ -130,7 +160,7 @@ const App = () => {
       // Modifier une question existante
       const updatedQuestions = questions.map(q => 
         q.id === editingQuestion.id 
-          ? { ...q, text: newQuestion, tags: newQuestionTags, updated_at: new Date() }
+          ? { ...q, text: newQuestion, tags: newQuestionTags, updated_at: new Date().toISOString() }
           : q
       );
       setQuestions(updatedQuestions);
@@ -142,7 +172,7 @@ const App = () => {
         text: newQuestion,
         tags: newQuestionTags,
         created_by: userId,
-        created_at: new Date()
+        created_at: new Date().toISOString()
       };
       setQuestions([...questions, question]);
     }
@@ -171,27 +201,30 @@ const App = () => {
       r => r.question_id === selectedQuestion.id && r.user_id === userId
     );
 
+    let updatedResponses;
     if (existingResponseIndex !== -1) {
-      const updatedResponses = [...responses];
+      // Modifier la réponse existante
+      updatedResponses = [...responses];
       updatedResponses[existingResponseIndex] = {
         ...updatedResponses[existingResponseIndex],
         agreement,
         importance,
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
       };
-      setResponses(updatedResponses);
     } else {
+      // Créer une nouvelle réponse
       const response = {
         id: Date.now(),
         question_id: selectedQuestion.id,
         user_id: userId,
         agreement,
         importance,
-        created_at: new Date()
+        created_at: new Date().toISOString()
       };
-      setResponses([...responses, response]);
+      updatedResponses = [...responses, response];
     }
     
+    setResponses(updatedResponses);
     setView('results');
   };
 
@@ -390,7 +423,6 @@ const App = () => {
         ).toFixed(1)
       : null;
     
-      
     const scatterData = questionResponses.map((r, i) => ({
       x: r.agreement,
       y: r.importance,
